@@ -334,6 +334,8 @@ void loadServerConfigFromString(char *config) {
             }
             zfree(server.aof_filename);
             server.aof_filename = zstrdup(argv[1]);
+        } else if(!strcasecmp(argv[0],"aof_shift_interval") && argc == 2) {
+        	server.aof_shift_interval = atoi(argv[1]);
         } else if (!strcasecmp(argv[0],"no-appendfsync-on-rewrite")
                    && argc == 2) {
             if ((server.aof_no_fsync_on_rewrite= yesnotoi(argv[1])) == -1) {

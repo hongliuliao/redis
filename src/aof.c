@@ -258,6 +258,38 @@ void flushAppendOnlyFile(int force) {
             redisLog(REDIS_NOTICE,"Asynchronous AOF fsync is taking too long (disk is busy?). Writing the AOF buffer without waiting for fsync to complete, this may slow down Redis.");
         }
     }
+
+    // shift aof file if need
+    if(server.aof_shift_interval != 0) { // shift file open
+		int format_time_len = 15;
+		int new_file_name_len = strlen(server.aof_filename) + format_time_len + 2; // "." & "\0"
+		char format_time_str[format_time_len];
+		char new_name[new_file_name_len];
+
+		bzero(format_time_str, format_time_len);
+		bzero(new_name, new_file_name_len);
+
+		time_t now = time(NULL);
+		struct tm *time_info = localtime(&now);
+		strftime(format_time_str, format_time_len, "%Y%m%d%H%M%S", time_info);
+
+		if(now - server.aof_last_shift_time > server.aof_shift_interval) {
+			redisLog(REDIS_NOTICE,"start shift aof file which aof_last_shift_time: %ld, aof_shift_interval:%d", server.aof_last_shift_time, server.aof_shift_interval);
+			snprintf(new_name, new_file_name_len, "%s.%s", server.aof_filename, format_time_str);
+			if(rename(server.aof_filename, new_name) == 0) {
+				FILE *fp = fopen(server.aof_filename, "w");
+				if(fp) {
+					server.aof_fd = fileno(fp);
+					server.aof_last_shift_time = now;
+				} else {
+					redisLog(REDIS_WARNING, "Opening aof file (%s) failed: %s", server.aof_filename, strerror(errno));
+				}
+			} else {
+				redisLog(REDIS_WARNING, "rename aof fail : %s", strerror(errno));
+			}
+		}
+	}
+
     /* We want to perform a single write. This should be guaranteed atomic
      * at least if the filesystem we are writing is a real physical one.
      * While this will save us against the server being killed I don't think
