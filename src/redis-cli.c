@@ -784,8 +784,11 @@ static int cliConnect(int flags) {
         /* Do AUTH and select the right DB. */
         if (cliAuth() != REDIS_OK)
             return REDIS_ERR;
-        if (cliSelect() != REDIS_OK)
+        if (cliSelect() != REDIS_OK) {
+            /* Force reset dbnum to make sure prompt is correct */
+            config.dbnum = 0;
             return REDIS_ERR;
+        }
     }
     return REDIS_OK;
 }
